@@ -38,6 +38,7 @@ function BeTranslator(){
 // ── engine worker ──
 let worker=null, engineReady=false, thinking=false;
 let pendingResolve=null, lastInfo=null;
+let searchGen=0;          // bumped whenever we start a new game / abandon a search
 function startWorker(){
   worker=new Worker('cow-worker.js',{type:'module'});
   worker.onmessage=(e)=>{
@@ -52,7 +53,7 @@ function startWorker(){
 function send(cmd){ dbg('» '+cmd); worker.postMessage({type:'cmd',cmd}); }
 let _dbgOn=false, _dbgLines=[];
 function dbg(s){ _dbgLines.push(s); if(_dbgLines.length>200)_dbgLines.shift(); const el=$('dbg'); if(el){ el.textContent=_dbgLines.join('\n'); el.scrollTop=el.scrollHeight; } }
-function engineGo(){ return new Promise(res=>{ pendingResolve=res; thinking=true;
+function engineGo(){ const myGen=searchGen; return new Promise(res=>{ pendingResolve=(mv)=>res({move:mv,gen:myGen}); thinking=true;
   const moves=game.history({verbose:true}).map(m=>m.from+m.to+(m.promotion||'')).join(' ');
   send('position startpos'+(moves?(' moves '+moves):''));
   const d=DIFFS[difficulty]||DIFFS.t5;
@@ -172,12 +173,19 @@ function tryMove(from,to){
 }
 function afterHumanMove(mv){ recordMove(mv,'you'); drawBoard(true); sound(mv); updateAfterMove();
   if(!game.game_over()) setTimeout(cowTurn, 220); }
+let cowThinking=false;
 async function cowTurn(){
   if(game.game_over()) return;
+  if(cowThinking) return;            // never run two searches at once (single-threaded worker)
+  cowThinking=true;
+  const myGen=searchGen;             // the generation this turn belongs to
   const d=DIFFS[difficulty]||DIFFS.t5;
   setStatus('the cow is thinking… 🐄'); $('thinkdot').classList.add('on');
-  const uci=await engineGo();
+  const {move:uci, gen} = await engineGo();
+  cowThinking=false;
   $('thinkdot').classList.remove('on');
+  // If a new game / takeback happened while she was thinking, this result is stale — drop it.
+  if(gen!==searchGen || myGen!==searchGen){ dbg('[stale bestmove '+uci+' ignored]'); return; }
   // Timed modes: charge the cow for the time she actually used, then add the increment.
   if(d.group==='timed'){
     const used=performance.now()-_goStart;
@@ -276,6 +284,8 @@ function setStatus(s){ $('status').textContent=s; }
 
 // ── controls ──
 function newGame(){
+  searchGen++;                       // invalidate any search still running from a prior game
+  cowThinking=false; pendingResolve=null; thinking=false;
   game.reset(); plies=[]; viewPly=0; be=BeTranslator(); selected=null; legalTargets=[]; lastInfo=null; lastEval=null;
   const d=DIFFS[difficulty]||DIFFS.t5;
   cowClockMs = (d.group==='timed') ? d.base : 0;
@@ -287,6 +297,7 @@ function newGame(){
 function setColor(c){ cowColor=c; $('btnWhite').classList.toggle('on',c==='b'); $('btnBlack').classList.toggle('on',c==='w'); newGame(); }
 function takeback(){
   if(thinking || plies.length===0) return;
+  searchGen++;   // invalidate any in-flight search
   // Undo back to the human's turn: pop the most recent ply, and if that leaves it as
   // the cow's turn (i.e. we only removed the cow's reply), pop one more (the human move).
   game.undo(); plies.pop();
