@@ -6,6 +6,9 @@ const PIECE = {p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};        // black
 const PIECE_W = {p:'♙',n:'♘',b:'♗',r:'♖',q:'♕',k:'♔'};       // white: outline glyphs
 // Distinct glyphs per color so White stays hollow / Black stays solid even when a
 // device (notably mobile Safari) emoji-colors chess symbols and ignores CSS color.
+// Only applied on narrow (<768px) screens; desktop keeps the richer filled look.
+const NARROW_BP = 768;
+function narrowScreen(){ const n = window.innerWidth < NARROW_BP; document.documentElement.classList.toggle('narrow', n); return n; }
 
 // ── baby_elm chess notation (faithful port of babyelm_translate.render_move) ──
 const BE = {"squares":{"a1":"⠉","a2":"⠙","a3":"⠹","a4":"⢹","a5":"⢱","a6":"⢡","a7":"⢁","a8":"⢉","b1":"⠋","b2":"⠛","b3":"⠻","b4":"⢻","b5":"⢳","b6":"⢣","b7":"⢃","b8":"⢋","c1":"⠏","c2":"⠟","c3":"⠿","c4":"⢿","c5":"⢷","c6":"⢧","c7":"⢇","c8":"⢏","d1":"⡏","d2":"⡟","d3":"⡿","d4":"⣿","d5":"⣷","d6":"⣧","d7":"⣇","d8":"⣏","e1":"⡎","e2":"⡞","e3":"⡾","e4":"⣾","e5":"⣶","e6":"⣦","e7":"⣆","e8":"⣎","f1":"⡌","f2":"⡜","f3":"⡼","f4":"⣼","f5":"⣴","f6":"⣤","f7":"⣄","f8":"⣌","g1":"⡈","g2":"⡘","g3":"⡸","g4":"⣸","g5":"⣰","g6":"⣠","g7":"⣀","g8":"⣈","h1":"⡉","h2":"⡙","h3":"⡹","h4":"⣹","h5":"⣱","h6":"⣡","h7":"⣁","h8":"⣉"},
@@ -116,7 +119,12 @@ function drawBoard(anim){
     if(selected===info.name)sq.classList.add('sel');
     if(legalTargets.includes(info.name)){ sq.classList.add('legal'); if(cells[i])sq.classList.add('cap'); }
     const c=cells[i];
-    if(c){const w=c===c.toUpperCase();sq.innerHTML=`<span class="pc ${w?'w':'b'}">${(w?PIECE_W:PIECE)[c.toLowerCase()]}</span>`;}
+    if(c){const w=c===c.toUpperCase();
+      // Narrow screens (<768px, i.e. mobile) use OUTLINE white glyphs + the bundled
+      // CowGlyphs font, because mobile Safari emoji-colors the filled symbols black.
+      // Desktop keeps the richer filled glyphs in the system font (the .pc styling).
+      const glyph = (narrowScreen() && w) ? PIECE_W[c.toLowerCase()] : PIECE[c.toLowerCase()];
+      sq.innerHTML=`<span class="pc ${w?'w':'b'}">${glyph}</span>`;}
     if(row===7)sq.insertAdjacentHTML('beforeend',`<span class="coord f">${'abcdefgh'[info.file]}</span>`);
     if(col===0)sq.insertAdjacentHTML('beforeend',`<span class="coord r">${info.rank}</span>`);
     sq.dataset.sq=info.name;
@@ -333,7 +341,8 @@ function init(){
   const gD=document.createElement('optgroup'); gD.label='fixed depth';
   for(const [k,v] of Object.entries(DIFFS)){ const o=document.createElement('option'); o.value=k; o.textContent=v.label; if(k===difficulty)o.selected=true; (v.group==='timed'?gT:gD).appendChild(o); }
   sel.appendChild(gT); sel.appendChild(gD);
+  narrowScreen();   // set the .narrow class before the first board paint
   flip=true; drawBoard(); renderMoves(); drawEvalBar(0); setStatus('press “new game” to play 🐄');
 }
-window.addEventListener('resize',()=>drawBoard());
+window.addEventListener('resize',()=>{ narrowScreen(); drawBoard(); });
 init();

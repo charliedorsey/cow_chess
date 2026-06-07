@@ -52,7 +52,11 @@ header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6
   border-radius:8px;overflow:hidden;box-shadow:var(--shadow);position:relative;flex:none}
 .sq{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .sq.l{background:var(--l)} .sq.d{background:var(--d)}
-.sq .pc{font-family:'CowGlyphs',serif;font-size:var(--pcsize);line-height:1;user-select:none;font-variant-emoji:text;-webkit-text-fill-color:currentColor}
+.sq .pc{font-size:var(--pcsize);line-height:1;user-select:none}
+/* Narrow screens (<768px) only: bundled glyph font + force text (not emoji) rendering
+   so outline-white/filled-black glyphs show correctly on mobile Safari. Desktop keeps
+   the system font and the richer filled look. */
+html.narrow .sq .pc{font-family:'CowGlyphs',serif;font-variant-emoji:text;-webkit-text-fill-color:currentColor}
 .sq .pc.w{color:#fbfaf7;text-shadow:0 1px 2px #0007,0 0 1px #0009}
 .sq .pc.b{color:#1a1206;text-shadow:0 1px 1px #fff3}
 .sq.lastf{box-shadow:inset 0 0 0 4px var(--hlfrom);background:color-mix(in srgb,var(--hlfrom) 16%,transparent)}
@@ -87,7 +91,7 @@ button.off{opacity:.5}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 label.lbl{color:var(--soft);font-size:13px}
 .movelist{font-size:14px;line-height:1.9;max-height:260px;overflow:auto;word-spacing:1px}
-.movelist .num{color:var(--soft)} .movelist .be{font-size:16px;font-family:'CowGlyphs',serif}
+.movelist .num{color:var(--soft)} .movelist .be{font-size:16px;font-family:'Apple Symbols','Segoe UI Symbol','Noto Sans Symbols 2','CowGlyphs',serif}
 .movelist .mv{padding:0 1px}
 .tools{display:flex;gap:6px;margin-left:auto}
 .tools button{padding:6px 9px}
@@ -101,7 +105,7 @@ footer{color:var(--soft);font-size:12px;margin-top:22px;text-align:center}
 .refrow{margin:12px 0;display:flex;flex-direction:column;gap:2px}
 .refrow b{font-size:15px} .refrow span{color:var(--soft);font-size:14px}
 .refdemo{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);color:var(--soft);font-size:14px}
-.refdemo code{font-size:18px;color:var(--ink);font-family:'CowGlyphs',ui-monospace,monospace}
+.refdemo code{font-size:18px;color:var(--ink);font-family:'Apple Symbols','Segoe UI Symbol','Noto Sans Symbols 2','CowGlyphs',ui-monospace,monospace}
 </style>
 </head>
 <body>
