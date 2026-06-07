@@ -32,6 +32,14 @@ function emit(line) {
     cow_init();
     // standard handshake so the UI knows she's up
     cow_uci('uci');
+    // Tuned config — the cow's default playing setup (= match-runner arm
+    // `instab+b20+kingpen+vision`). instab: keep deepening while her best move is
+    // unsettled. b20: +20% per-move time budget (timed modes). vision: total-vision
+    // move ordering. kingpen: king-vision penalty modifier (needs vision on).
+    cow_uci('setoption name CowPredictiveCutInstability value true');
+    cow_uci('setoption name CowTimeBudgetBonusPct value 20');
+    cow_uci('setoption name CowVisionTotalOrder value true');
+    cow_uci('setoption name CowKingVisionPenalty value true');
     cow_uci('isready');
     postMessage({ type: 'ready' });
   } catch (err) {
