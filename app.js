@@ -2,7 +2,10 @@
 // Board/glide/themes/sounds adapted from the game watcher; engine via cow-worker.js.
 
 const $ = id => document.getElementById(id);
-const PIECE = {p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};
+const PIECE = {p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚'};        // black: filled glyphs
+const PIECE_W = {p:'♙',n:'♘',b:'♗',r:'♖',q:'♕',k:'♔'};       // white: outline glyphs
+// Distinct glyphs per color so White stays hollow / Black stays solid even when a
+// device (notably mobile Safari) emoji-colors chess symbols and ignores CSS color.
 
 // ── baby_elm chess notation (faithful port of babyelm_translate.render_move) ──
 const BE = {"squares":{"a1":"⠉","a2":"⠙","a3":"⠹","a4":"⢹","a5":"⢱","a6":"⢡","a7":"⢁","a8":"⢉","b1":"⠋","b2":"⠛","b3":"⠻","b4":"⢻","b5":"⢳","b6":"⢣","b7":"⢃","b8":"⢋","c1":"⠏","c2":"⠟","c3":"⠿","c4":"⢿","c5":"⢷","c6":"⢧","c7":"⢇","c8":"⢏","d1":"⡏","d2":"⡟","d3":"⡿","d4":"⣿","d5":"⣷","d6":"⣧","d7":"⣇","d8":"⣏","e1":"⡎","e2":"⡞","e3":"⡾","e4":"⣾","e5":"⣶","e6":"⣦","e7":"⣆","e8":"⣎","f1":"⡌","f2":"⡜","f3":"⡼","f4":"⣼","f5":"⣴","f6":"⣤","f7":"⣄","f8":"⣌","g1":"⡈","g2":"⡘","g3":"⡸","g4":"⣸","g5":"⣰","g6":"⣠","g7":"⣀","g8":"⣈","h1":"⡉","h2":"⡙","h3":"⡹","h4":"⣹","h5":"⣱","h6":"⣡","h7":"⣁","h8":"⣉"},
@@ -113,7 +116,7 @@ function drawBoard(anim){
     if(selected===info.name)sq.classList.add('sel');
     if(legalTargets.includes(info.name)){ sq.classList.add('legal'); if(cells[i])sq.classList.add('cap'); }
     const c=cells[i];
-    if(c){const w=c===c.toUpperCase();sq.innerHTML=`<span class="pc ${w?'w':'b'}">${PIECE[c.toLowerCase()]}</span>`;}
+    if(c){const w=c===c.toUpperCase();sq.innerHTML=`<span class="pc ${w?'w':'b'}">${(w?PIECE_W:PIECE)[c.toLowerCase()]}</span>`;}
     if(row===7)sq.insertAdjacentHTML('beforeend',`<span class="coord f">${'abcdefgh'[info.file]}</span>`);
     if(col===0)sq.insertAdjacentHTML('beforeend',`<span class="coord r">${info.rank}</span>`);
     sq.dataset.sq=info.name;

@@ -6,6 +6,16 @@
 <title>🐄 cow_chess 🐄</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐄%3C/text%3E%3C/svg%3E">
 <style>
+/* Bundled glyph font: covers the board chess pieces, the baby_elm braille squares,
+   and the rare "turned" Chess-Symbols-Extended glyphs (U+1FA00–1FA6F) that most
+   system fonts — especially mobile — lack. Subset of Noto Sans Symbols 2 (SIL OFL),
+   ~9KB. Using it for both the board and the move list guarantees identical, non-emoji
+   rendering everywhere. */
+@font-face{
+  font-family:'CowGlyphs';
+  src:url('cow_glyphs.woff2') format('woff2');
+  font-display:swap;
+}
 :root[data-theme="light"]{
   --bg:#f4efe4; --panel:#fbf7ee; --ink:#2c2418; --soft:#7a6f5c; --line:#d9cfba;
   --l:#e8dcc4; --d:#b08a5e; --accent:#b5852a;
@@ -42,7 +52,7 @@ header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6
   border-radius:8px;overflow:hidden;box-shadow:var(--shadow);position:relative;flex:none}
 .sq{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .sq.l{background:var(--l)} .sq.d{background:var(--d)}
-.sq .pc{font-size:var(--pcsize);line-height:1;user-select:none}
+.sq .pc{font-family:'CowGlyphs',serif;font-size:var(--pcsize);line-height:1;user-select:none;font-variant-emoji:text;-webkit-text-fill-color:currentColor}
 .sq .pc.w{color:#fbfaf7;text-shadow:0 1px 2px #0007,0 0 1px #0009}
 .sq .pc.b{color:#1a1206;text-shadow:0 1px 1px #fff3}
 .sq.lastf{box-shadow:inset 0 0 0 4px var(--hlfrom);background:color-mix(in srgb,var(--hlfrom) 16%,transparent)}
@@ -77,7 +87,7 @@ button.off{opacity:.5}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 label.lbl{color:var(--soft);font-size:13px}
 .movelist{font-size:14px;line-height:1.9;max-height:260px;overflow:auto;word-spacing:1px}
-.movelist .num{color:var(--soft)} .movelist .be{font-size:16px}
+.movelist .num{color:var(--soft)} .movelist .be{font-size:16px;font-family:'CowGlyphs',serif}
 .movelist .mv{padding:0 1px}
 .tools{display:flex;gap:6px;margin-left:auto}
 .tools button{padding:6px 9px}
@@ -91,7 +101,7 @@ footer{color:var(--soft);font-size:12px;margin-top:22px;text-align:center}
 .refrow{margin:12px 0;display:flex;flex-direction:column;gap:2px}
 .refrow b{font-size:15px} .refrow span{color:var(--soft);font-size:14px}
 .refdemo{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);color:var(--soft);font-size:14px}
-.refdemo code{font-size:18px;color:var(--ink)}
+.refdemo code{font-size:18px;color:var(--ink);font-family:'CowGlyphs',ui-monospace,monospace}
 </style>
 </head>
 <body>
