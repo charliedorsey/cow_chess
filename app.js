@@ -49,8 +49,22 @@ function dbg(s){ _dbgLines.push(s); if(_dbgLines.length>200)_dbgLines.shift(); c
 function engineGo(){ return new Promise(res=>{ pendingResolve=res; thinking=true;
   const moves=game.history({verbose:true}).map(m=>m.from+m.to+(m.promotion||'')).join(' ');
   send('position startpos'+(moves?(' moves '+moves):''));
-  const d=DIFFS[difficulty]||DIFFS.ironclad; send('go '+d.go);
+  const d=DIFFS[difficulty]||DIFFS.t5;
+  if(d.group==='depth'){
+    send('go depth '+d.depth);
+  } else {
+    // Cow tournament clock. UCI wants wtime/btime per color; only the cow has a managed
+    // clock (you move at your leisure in v1), so we give YOU a big constant so she never
+    // thinks you're about to flag, and feed HER real remaining time on her own color.
+    const HUGE=3600000;
+    const cowIsWhite = (cowColor==='w');
+    const wtime = cowIsWhite ? cowClockMs : HUGE;
+    const btime = cowIsWhite ? HUGE : cowClockMs;
+    send(`go wtime ${Math.max(1,Math.round(wtime))} btime ${Math.max(1,Math.round(btime))} winc ${d.inc} binc ${d.inc}`);
+    _goStart=performance.now();   // to measure how long she actually thinks
+  }
 }); }
+let _goStart=0;
 
 // ── game state ──
 const game=new Chess();
@@ -61,12 +75,27 @@ let viewPly=0;               // for review nav; equals plies.length during live 
 let be=BeTranslator();
 let lastEval=null;           // {kind,val} from cow's POV-agnostic (white-rel) — we normalize
 
+// ── difficulty ──
+// Two families:
+//   timed  → the cow runs a real tournament clock (we send `go wtime/btime/winc/binc`
+//            and let HER clock management decide how long to think). v1 = cow-only budget:
+//            we track only her remaining time; you move at your leisure. base = minutes,
+//            inc = seconds added after each of her moves.
+//   depth  → fixed `go depth N` (raw ply/iteration count; depth 1 is near-random,
+//            depth 10 is strong-but-slow).
 const DIFFS={
-  casual:{label:'casual',go:'movetime 800'},
-  club:{label:'club',go:'movetime 3000'},
-  ironclad:{label:'the ironclad cow',go:'movetime 12000'},
+  // timed (cow tournament-clock management)
+  t3:  {group:'timed', label:'3 min · cow tournament (+2s)',  base:180000, inc:2000},
+  t5:  {group:'timed', label:'5 min · cow tournament (+3s)',  base:300000, inc:3000},
+  t10: {group:'timed', label:'10 min · cow tournament (+5s)', base:600000, inc:5000},
+  // fixed depth
+  d1:  {group:'depth', label:'easy · 1 ply',      depth:1},
+  d3:  {group:'depth', label:'casual · 3 ply',    depth:3},
+  d5:  {group:'depth', label:'club · 5 ply',      depth:5},
+  d10: {group:'depth', label:'the ironclad cow · 10 ply (slow!)', depth:10},
 };
-let difficulty='ironclad';
+let difficulty='t5';           // default: cow tournament mode, 5-minute, full strength
+let cowClockMs=300000;         // cow's remaining time (timed modes); reset on new game
 
 // ── board render (flip-aware, coords, last-move highlight, glide) ──
 function sqXY(sqName){const file='abcdefgh'.indexOf(sqName[0]); const rank=+sqName[1]; return flip?{col:7-file,row:rank-1}:{col:file,row:8-rank};}
@@ -134,25 +163,33 @@ function afterHumanMove(mv){ recordMove(mv,'you'); drawBoard(true); sound(mv); u
   if(!game.game_over()) setTimeout(cowTurn, 220); }
 async function cowTurn(){
   if(game.game_over()) return;
+  const d=DIFFS[difficulty]||DIFFS.t5;
   setStatus('the cow is thinking… 🐄'); $('thinkdot').classList.add('on');
   const uci=await engineGo();
   $('thinkdot').classList.remove('on');
+  // Timed modes: charge the cow for the time she actually used, then add the increment.
+  if(d.group==='timed'){
+    const used=performance.now()-_goStart;
+    cowClockMs=cowClockMs-used+d.inc;
+    if(cowClockMs<=0){ cowClockMs=0; updateClock(); setStatus('the cow flagged — you win on time! 🎉'); return; }
+    updateClock();
+  }
   if(!uci || uci==='0000' || uci==='(none)'){
-    // She returned a null move. If the position is actually over, show the result;
-    // otherwise surface it (shouldn't happen now that we never send `go depth 64`).
     if(game.game_over()){ updateAfterMove(); }
     else { setStatus('⚠ the cow had no move to make (got '+(uci||'nothing')+')'); }
     return;
   }
   const from=uci.slice(0,2), to=uci.slice(2,4), promo=uci.slice(4,5);
-  // Only pass `promotion` when the UCI move actually carries one. Passing 'q' on a
-  // non-promotion move (e.g. a knight to e2) makes chess.js reject it as illegal.
   const arg = promo ? {from,to,promotion:promo} : {from,to};
   const mv=game.move(arg);
   if(!mv){ setStatus('⚠ the cow returned a move I could not apply: '+uci); return; }
   recordMove(mv,'cow'); drawBoard(true); sound(mv);
   updateAfterMove(); if(!game.game_over()) setStatus('your move');
 }
+function fmtClock(ms){ const s=Math.max(0,Math.ceil(ms/1000)); const m=Math.floor(s/60); const r=s%60; return m+':'+String(r).padStart(2,'0'); }
+function updateClock(){ const el=$('cowclock'); if(!el)return; const d=DIFFS[difficulty]||{};
+  if(d.group==='timed'){ el.style.display=''; el.textContent='🐄 '+fmtClock(cowClockMs); el.classList.toggle('low',cowClockMs<30000); }
+  else { el.style.display='none'; } }
 function recordMove(mv,who){ plies.push({san:mv.san,be:be(mv),from:mv.from,to:mv.to,fen:game.fen(),who}); viewPly=plies.length; renderMoves(); }
 
 // ── eval bar (split board colors; 🐄/🧑 glyph shows who leads) ──
@@ -160,13 +197,12 @@ function setEvalFromInfo(){
   if(!lastInfo){ return; }
   // engine prints score from side-to-move POV AFTER cow's move it's your turn.
   // We normalize to "cow advantage in cp": cow just moved, score is now from your POV.
-  // Simpler & robust: cow_chess prints score cp from white POV in its info line? We
-  // measured it's side-to-move relative; to display cleanly we track cow POV via turn.
+  // The `info ... score cp X` line is emitted DURING the cow's search, i.e. when it is
+  // the cow's turn to move — so the score is already from the COW's point of view:
+  // positive = the cow is better. (Earlier this negated it, which inverted the bar.)
   let cp = lastInfo.val;
   if(lastInfo.kind==='mate'){ cp = lastInfo.val>0 ? 100000 : -100000; }
-  // score was reported for the side to move at the end of cow's search = the human.
-  // cow advantage = -humanPOV.
-  let cowAdv = -cp;
+  let cowAdv = cp;
   lastEval = cowAdv;
   drawEvalBar(cowAdv);
 }
@@ -230,9 +266,11 @@ function setStatus(s){ $('status').textContent=s; }
 // ── controls ──
 function newGame(){
   game.reset(); plies=[]; viewPly=0; be=BeTranslator(); selected=null; legalTargets=[]; lastInfo=null; lastEval=null;
+  const d=DIFFS[difficulty]||DIFFS.t5;
+  cowClockMs = (d.group==='timed') ? d.base : 0;
   send('ucinewgame'); send('isready');
   flip = (cowColor==='w');      // you at bottom: if cow is white, flip so you (black) are bottom
-  drawBoard(); renderMoves(); drawEvalBar(0); setStatus('your move');
+  drawBoard(); renderMoves(); drawEvalBar(0); updateClock(); setStatus('your move');
   if(game.turn()===cowColor) cowTurn();   // cow is white → she opens
 }
 function setColor(c){ cowColor=c; $('btnWhite').classList.toggle('on',c==='b'); $('btnBlack').classList.toggle('on',c==='w'); newGame(); }
@@ -283,11 +321,15 @@ function init(){
   $('btnMute').onclick=()=>{muted=!muted;$('btnMute').textContent=muted?'🔇':'🔊';$('btnMute').classList.toggle('off',muted); if(!muted)blip(330,.05,'triangle',.05);};
   $('btnRef').onclick=openRef; $('refClose').onclick=closeRef; $('refModal').onclick=(e)=>{if(e.target===$('refModal'))closeRef();};
   if($('dbgClear'))$('dbgClear').onclick=()=>{_dbgLines=[];$('dbg').textContent='';};
-  $('diff').onchange=(e)=>{difficulty=e.target.value;};
+  $('diff').onchange=(e)=>{difficulty=e.target.value; newGame();};
   $('btnTheme').onclick=()=>{const d=document.documentElement;const dark=d.getAttribute('data-theme')==='dark';d.setAttribute('data-theme',dark?'light':'dark');$('btnTheme').textContent=dark?'☾':'☀';try{localStorage.setItem('cow_theme',dark?'light':'dark');}catch(e){}};
   try{const t=localStorage.getItem('cow_theme')||(matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);$('btnTheme').textContent=t==='dark'?'☀':'☾';}catch(e){}
-  // difficulty options
-  for(const [k,v] of Object.entries(DIFFS)){ const o=document.createElement('option'); o.value=k; o.textContent=v.label; if(k==='ironclad')o.selected=true; $('diff').appendChild(o); }
+  // difficulty options — two groups: cow tournament clock, and fixed depth
+  const sel=$('diff'); sel.innerHTML='';
+  const gT=document.createElement('optgroup'); gT.label='cow tournament clock';
+  const gD=document.createElement('optgroup'); gD.label='fixed depth';
+  for(const [k,v] of Object.entries(DIFFS)){ const o=document.createElement('option'); o.value=k; o.textContent=v.label; if(k===difficulty)o.selected=true; (v.group==='timed'?gT:gD).appendChild(o); }
+  sel.appendChild(gT); sel.appendChild(gD);
   flip=true; drawBoard(); renderMoves(); drawEvalBar(0); setStatus('press “new game” to play 🐄');
 }
 window.addEventListener('resize',()=>drawBoard());
