@@ -89,17 +89,20 @@ let lastEval=null;           // {kind,val} from cow's POV-agnostic (white-rel) �
 //            we track only her remaining time; you move at your leisure. base = minutes,
 //            inc = seconds added after each of her moves.
 //   depth  → fixed `go depth N` (raw ply/iteration count; depth 1 is near-random,
-//            depth 10 is strong-but-slow).
+//            depth 5 is strong-but-slow).
 const DIFFS={
-  // timed (cow tournament-clock management)
+  // timed (cow tournament-clock management) — base = ms, inc = ms added per cow move
+  t1:  {group:'timed', label:'1 min · cow tournament (+1s)',  base:60000,  inc:1000},
+  t2:  {group:'timed', label:'2 min · cow tournament (+2s)',  base:120000, inc:2000},
   t3:  {group:'timed', label:'3 min · cow tournament (+2s)',  base:180000, inc:2000},
   t5:  {group:'timed', label:'5 min · cow tournament (+3s)',  base:300000, inc:3000},
   t10: {group:'timed', label:'10 min · cow tournament (+5s)', base:600000, inc:5000},
-  // fixed depth
-  d1:  {group:'depth', label:'easy · 1 ply',      depth:1},
-  d3:  {group:'depth', label:'casual · 3 ply',    depth:3},
-  d5:  {group:'depth', label:'club · 5 ply',      depth:5},
-  d10: {group:'depth', label:'the ironclad cow · 10 ply (slow!)', depth:10},
+  // fixed depth (1–5 ply)
+  d1:  {group:'depth', label:'easy · 1 ply',     depth:1},
+  d2:  {group:'depth', label:'beginner · 2 ply', depth:2},
+  d3:  {group:'depth', label:'casual · 3 ply',   depth:3},
+  d4:  {group:'depth', label:'club · 4 ply',     depth:4},
+  d5:  {group:'depth', label:'the ironclad cow · 5 ply (slow!)', depth:5},
 };
 let difficulty='t5';           // default: cow tournament mode, 5-minute, full strength
 let cowClockMs=300000;         // cow's remaining time (timed modes); reset on new game
