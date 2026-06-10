@@ -14,8 +14,8 @@
 //  because the two builds' memory/function layouts don't match.
 //  The ?v=N query forces a fresh, MATCHED pair. **Bump N on every deploy**,
 //  and keep it identical in BOTH places below (the import AND locateFile).
-import CowModule from './cow.js?v=3';
-const COW_WASM_V = '3';   // <-- must match the ?v= in the import line above
+import CowModule from './cow.js?v=362bf99b7827';
+const COW_WASM_V = '362bf99b7827';   // <-- must match the ?v= in the import line above
 
 // ─────────────────────────────────────────────────────────────────────────
 //  HER PLAYING CONFIG  —  the one place to change how she plays.
