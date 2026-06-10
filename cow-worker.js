@@ -7,7 +7,15 @@
 // A `go` runs synchronously inside cow_uci here in the worker (blocks the worker,
 // not the page); when it returns, the bestmove line has already been emitted.
 
-import CowModule from './cow.js';
+// ── CACHE-BUSTING ──────────────────────────────────────────────────────────
+//  GitHub Pages (and the browser) cache cow.js and cow.wasm INDEPENDENTLY.
+//  A fresh cow.js paired with a stale cached cow.wasm (or vice versa) loads
+//  fine but crashes on the first search ("memory access out of bounds"),
+//  because the two builds' memory/function layouts don't match.
+//  The ?v=N query forces a fresh, MATCHED pair. **Bump N on every deploy**,
+//  and keep it identical in BOTH places below (the import AND locateFile).
+import CowModule from './cow.js?v=3';
+const COW_WASM_V = '3';   // <-- must match the ?v= in the import line above
 
 // ─────────────────────────────────────────────────────────────────────────
 //  HER PLAYING CONFIG  —  the one place to change how she plays.
@@ -44,6 +52,9 @@ function emit(line) {
     Module = await CowModule({
       print: emit,
       printErr: () => {},   // engine is quiet on stderr
+      // Force cow.wasm to carry the SAME version as cow.js so the browser/CDN
+      // can never serve a mismatched (stale-wasm / fresh-js) pair.
+      locateFile: (path) => path + '?v=' + COW_WASM_V,
     });
     cow_uci  = Module.cwrap('cow_uci',  'number', ['string']);
     cow_init = Module.cwrap('cow_init', null, []);
