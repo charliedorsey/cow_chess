@@ -1,0 +1,28 @@
+# ── cow_chess PUBLIC site — keep engine source & build tooling OUT of the repo ──
+# The public repo should contain ONLY the runtime:
+#   index.html  app.js  chess.js  cow-worker.js  cow.js  cow.wasm
+#   cow_glyphs.woff2  README.md  serve.command
+
+# engine source (NEVER publish)
+src/
+*.c
+*.h
+*.elm
+
+# build tooling
+build_wasm.sh
+deploy.sh
+Makefile
+harness.mjs
+*.mjs
+dist/
+
+# internal notes / provenance
+PROVENANCE.md
+*_NOTES.md
+COW_WASM_PLAN.md
+
+# os junk
+.DS_Store
+__MACOSX/
+*.swp

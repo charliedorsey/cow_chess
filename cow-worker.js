@@ -9,6 +9,24 @@
 
 import CowModule from './cow.js';
 
+// ─────────────────────────────────────────────────────────────────────────
+//  HER PLAYING CONFIG  —  the one place to change how she plays.
+//
+//  Current arm:   instab + b15 + vision + kingpen + cowpawnchain
+//
+//  Each entry is a UCI setoption line, sent once at startup (after `uci`).
+//  Changing this is PURE JS: edit, save, re-push the site — NO wasm rebuild
+//  needed. You only rebuild cow.js/cow.wasm when the ENGINE SOURCE changes.
+//  To try another arm, comment a line out or change a value and re-push.
+// ─────────────────────────────────────────────────────────────────────────
+const COW_CONFIG = [
+  'setoption name CowPredictiveCutInstability value true', // instab  — keep deepening while her best move is unsettled
+  'setoption name CowTimeBudgetBonusPct value 15',         // b15     — +15% per-move time budget (timed modes)
+  'setoption name CowVisionTotalOrder value true',         // vision  — total-vision move ordering
+  'setoption name CowKingVisionPenalty value true',        // kingpen — king-vision penalty (needs vision on)
+  'setoption name CowPawnChain value true',                // cowpawnchain — pawn-chain reward (Candidate; remove to revert)
+];
+
 let Module = null;
 let cow_uci = null;
 let cow_init = null;
@@ -30,16 +48,8 @@ function emit(line) {
     cow_uci  = Module.cwrap('cow_uci',  'number', ['string']);
     cow_init = Module.cwrap('cow_init', null, []);
     cow_init();
-    // standard handshake so the UI knows she's up
     cow_uci('uci');
-    // Tuned config — the cow's default playing setup (= match-runner arm
-    // `instab+b20+kingpen+vision`). instab: keep deepening while her best move is
-    // unsettled. b20: +20% per-move time budget (timed modes). vision: total-vision
-    // move ordering. kingpen: king-vision penalty modifier (needs vision on).
-    cow_uci('setoption name CowPredictiveCutInstability value true');
-    cow_uci('setoption name CowTimeBudgetBonusPct value 20');
-    cow_uci('setoption name CowVisionTotalOrder value true');
-    cow_uci('setoption name CowKingVisionPenalty value true');
+    for (const line of COW_CONFIG) cow_uci(line);   // apply her playing arm
     cow_uci('isready');
     postMessage({ type: 'ready' });
   } catch (err) {
